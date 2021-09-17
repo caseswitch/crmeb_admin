@@ -1,6 +1,7 @@
 @import './variables.scss';
 @import './element-variables.scss';
 @import './btn.scss';
+@import './sidebar.scss';
 body {
     height: 100%;
     -moz-osx-font-smoothing: grayscale;
@@ -9,7 +10,10 @@ body {
     font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
     font-size: 12px;
   }
-  
+  *{
+      margin: 0;
+      padding: 0;
+  }
   label {
     font-weight: 700;
   }
@@ -21,6 +25,7 @@ body {
   
   #app {
     height: 100%;
+    overflow: auto;
   }
   
   *,

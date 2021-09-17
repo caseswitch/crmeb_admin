@@ -1,8 +1,12 @@
+import { login, logout, getInfo } from '@/api/user'
+import { getToken, setToken, removeToken } from '@/utils/auth'
+import { resetRouter } from '@/router'
+import { isLoginApi } from '@/api/sms'
 import Cookies from 'js-cookie'
-import { login, getInfo } from '@/api/user'
-import { setToken } from '@/utils/auth'
+// import { oAuth, getQueryString } from "@/libs/wechat";
+
 const state = {
-  token: Cookies.get('token'),
+  token: getToken(),
   name: '',
   avatar: '',
   introduction: '',
@@ -35,8 +39,10 @@ const mutations = {
 const actions = {
   // user login
   login({ commit }, userInfo) {
+    // const { account, pwd,  key, code, wxCode } = userInfo
     return new Promise((resolve, reject) => {
       login(userInfo).then(data => {
+        console.log(data)
         commit('SET_TOKEN', data.token)
         Cookies.set('JavaInfo', JSON.stringify(data))
         setToken(data.token)
@@ -46,6 +52,21 @@ const actions = {
       })
     })
   },
+
+  // 短信是否登录
+  isLogin({ commit }, userInfo) {
+    // const { username, password } = userInfo
+    return new Promise((resolve, reject) => {
+      isLoginApi().then(async res => {
+        commit('SET_ISLOGIN', res.status)
+        resolve(res)
+      }).catch(res => {
+        commit('SET_ISLOGIN', false)
+        reject(res)
+      })
+    })
+  },
+
   // get user info
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
@@ -71,7 +92,74 @@ const actions = {
         reject(error)
       })
     })
+  },
+
+  // user logout
+  logout({ commit, state, dispatch }) {
+    return new Promise((resolve, reject) => {
+      logout(state.token).then(() => {
+        commit('SET_TOKEN', '')
+        commit('SET_ROLES', [])
+        removeToken()
+        resetRouter()
+        localStorage.clear()
+        Cookies.remove('storeStaffList')
+        Cookies.remove('JavaInfo')
+        sessionStorage.removeItem('token')
+        // reset visited views and cached views
+        // to fixed https://github.com/PanJiaChen/vue-element-admin/issues/2485
+        dispatch('tagsView/delAllViews', null, { root: true })
+
+        resolve()
+      }).catch(error => {
+        reject(error)
+      })
+    })
+  },
+
+  // remove token
+  resetToken({ commit }) {
+    return new Promise(resolve => {
+      commit('SET_TOKEN', '')
+      commit('SET_ROLES', [])
+      removeToken()
+      resolve()
+    })
+  },
+  // 设置token
+  setToken({ commit }, state) {
+    return new Promise(resolve => {
+      commit('SET_TOKEN', state.token)
+      Cookies.set('JavaInfo', JSON.stringify(state))
+      setToken(state.token)
+      resolve()
+    })
   }
+
+  // dynamically modify permissions
+  //   changeRoles({ commit, dispatch }, role) {
+  //     return new Promise(async resolve => {
+  //       const token = role + '-token'
+
+  //       commit('SET_TOKEN', token)
+  //       setToken(token)
+
+  //       const { roles } = await dispatch('getInfo')
+
+  //       resetRouter()
+
+  //       // generate accessible routes map based on roles
+  //       const accessRoutes = await dispatch('permission/generateRoutes', roles, { root: true })
+
+  //       // dynamically add accessible routes
+  //       router.addRoutes(accessRoutes)
+
+  //       // reset visited views and cached views
+  //       dispatch('tagsView/delAllViews', null, { root: true })
+
+//       resolve()
+//     })
+//   }
 }
 
 export default {

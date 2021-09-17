@@ -1,7 +1,7 @@
 <template>
   <div class="login">
-    <div class="container containerBig">
-      <template class="swiperPross">
+    <div class="container" :class="[screenWidth>768? 'containerBig':'containersmall']">
+      <template v-if="screenWidth>768" class="swiperPross">
         <swiper :options="swiperOption">
           <swiper-slide class="swiperPic">
             <img src="../../images/logo1.png" alt="">
@@ -15,12 +15,12 @@
             <img src="../../images/logo2.png" alt="logo">
           </div>
         </div>
-        <el-form ref="loginform" :model="loginForm" class="loginform" label-position="left" autocomplete="on">
-          <el-form-item prop="acount">
-            <el-input ref="username" v-model="loginForm.username" type="txt" placeholder="用户名" prefix-icon="el-icon-user" autocomplete="on" name="username" tabindex="2" />
+        <el-form ref="loginform" :model="loginForm" class="loginform" label-position="left" autocomplete="on" :rules="rules">
+          <el-form-item prop="account">
+            <el-input ref="account" v-model="loginForm.account" type="txt" placeholder="用户名" prefix-icon="el-icon-user" autocomplete="on" name="username" tabindex="2" />
           </el-form-item>
           <el-form-item prop="pwd">
-            <el-input ref="pwd" v-model="loginForm.password" :type="passwordType" prefix-icon="el-icon-lock" placeholder="密码" autocomplete="on" name="password" tabindex="1" />
+            <el-input ref="pwd" v-model="loginForm.pwd" :type="passwordType" prefix-icon="el-icon-lock" placeholder="密码" autocomplete="on" name="password" tabindex="1" />
             <span class="show-pwd" @click="showPwd">
               <svg-icon :icon-class=" passwordType === 'password' ? 'eye':'eye-open'" />
             </span>
@@ -32,7 +32,7 @@
             </div>
           </el-form-item>
           <div class="submit">
-            <el-button type="primary" :loading="loading" size="medium">登录</el-button>
+            <el-button type="primary" :loading="loading" size="medium" @click.native.prevent="handLogin()">登录</el-button>
           </div>
         </el-form>
       </div>
@@ -49,6 +49,8 @@ export default {
   data() {
     return {
       passwordType: 'password',
+      fullWidth: document.body.clientWidth,
+      screenWidth: 0,
       swiperOption: {
         pagination: {
           el: '.pagination'// 是否分页
@@ -60,21 +62,54 @@ export default {
         }
       },
       loginForm: {
-        username: 'admin',
-        password: '123456',
+        account: 'admin',
+        pwd: '123456',
         code: '',
-        key: ''
+        key: '',
+        wxCode: ''
       },
       captchatImg: '',
-      loading: false
+      loading: false,
+      rules: {
+        acount: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+        pwd: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+        code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+      }
     }
   },
   computed: {
   },
   watch: {
+    fullWidth(val) {
+      // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
+      if (!this.timer) {
+        this.screenWidth = val
+        this.timer = true
+        const that = this
+        setTimeout(() => {
+          that.timer = false
+        }, 400)
+      }
+    },
+    $route: {
+      handler: function(route) {
+        const query = route.query
+        if (query) {
+          this.redirect = query.redirect
+          this.otherQuery = this.getOtherQuery(query)
+        }
+      },
+      immediate: true
+    }
+  },
+  created() {
+    window.addEventListener('resize', this.handleResize)
   },
   mounted() {
     this.getCaptcha()
+  },
+  beforeDestroy: function() {
+    window.removeEventListener('resize', this.handleResize)
   },
   methods: {
     showPwd() {
@@ -89,7 +124,6 @@ export default {
     },
     getCaptcha() {
       captchaApi().then((data) => {
-        console.log(data)
         this.captchatImg = data.code
         this.loginForm.key = data.key
       }).catch(({
@@ -97,20 +131,54 @@ export default {
       }) => {
         this.$message.error(message)
       })
+    },
+    handleResize(event) {
+      this.fullWidth = document.body.clientWidth
+    },
+    handLogin() {
+      this.$refs.loginform.validate(valide => {
+        if (valide) {
+          this.loading = true
+          this.$store.dispatch('user/login', this.loginForm).then(() => {
+            this.$router.push({
+              path: this.redirect || '/',
+              query: this.otherQuery
+            })
+            this.loading = false
+          }).catch(err => {
+            this.loading = false
+            console.log(err)
+          })
+        } else {
+          return false
+        }
+      })
+    },
+    getOtherQuery(query) {
+      return Object.keys(query).reduce((acc, cur) => {
+        if (cur !== 'redirect') {
+          acc[cur] = query[cur]
+        }
+        return acc
+      }, {})
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
+    $screen-md:768px;
     .login {
         height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
         background-image: url('../../assets/imgs/bg.jpg');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: cover;
+        overflow: auto;
         .container {
-            width: 670px;
             height: 400px;
             padding: 0 !important;
             border-radius: 6px;
@@ -124,6 +192,11 @@ export default {
              }
         }
         .containerBig {
+            width: 670px;
+            background: #f7f7f7 !important;
+        }
+        .containersmall {
+            width: auto !important;
             background: #f7f7f7 !important;
         }
         .index_from {
@@ -164,6 +237,12 @@ export default {
             }
 
         }
-
+    }
+    @media screen and (min-width: $screen-md) {
+        .lgoin{
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover;
+        }
     }
 </style>
